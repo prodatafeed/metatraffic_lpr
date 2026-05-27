@@ -67,8 +67,11 @@ CREATE TABLE IF NOT EXISTS court (
 CREATE TABLE IF NOT EXISTS locations (
   id             BIGINT PRIMARY KEY AUTO_INCREMENT,
   location_code  VARCHAR(32) NOT NULL UNIQUE,
-  city           VARCHAR(64),
-  state          VARCHAR(32),
+  address1       VARCHAR(64) DEFAULT NULL,
+  address2       VARCHAR(64) DEFAULT NULL,
+  city           VARCHAR(64) DEFAULT NULL,
+  state          VARCHAR(32) DEFAULT NULL,
+  zip            VARCHAR(10) DEFAULT NULL,
   court_id       BIGINT DEFAULT NULL,
   is_school_zone ENUM('Y','N') NOT NULL DEFAULT 'N',
   created_at     INT NOT NULL,

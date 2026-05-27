@@ -12,9 +12,10 @@ const PHOTOS_DIR   = path.join(__dirname, '../photos');
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// multer v2 still uses (req, file, cb) callbacks internally for diskStorage and fileFilter
 const storage = multer.diskStorage({
-  destination: PHOTOS_DIR,
-  filename: (req, file, cb) => cb(null, `${req.params.guid}.jpg`),
+  destination: PHOTOS_DIR,  // string — multer auto-creates dir, no callback needed
+  filename:    (req, file, cb) => cb(null, `${req.params.guid}.jpg`),
 });
 const upload = multer({
   storage,
@@ -143,19 +144,23 @@ router.get('/reads', requireAuth, async (req, res) => {
 });
 
 // ── Photo upload handler (shared by both routes below) ───────────────────
-function handlePhotoUpload(req, res) {
+// multer v2: storage/fileFilter use return-value style, but the middleware
+// is still (req, res, next) — wrap in a Promise using resolve as next.
+async function handlePhotoUpload(req, res) {
   const { guid } = req.params;
   if (!GUID_RE.test(guid)) return res.status(400).json({ error: 'Invalid GUID format' });
 
-  upload.single('photo')(req, res, err => {
-    if (err?.code === 'INVALID_TYPE') return res.status(400).json({ error: 'Only JPEG files are accepted' });
-    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File exceeds 10 MB limit' });
-    if (err) return res.status(500).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded — use field name "photo"' });
+  // Pass resolve as `next` — multer calls next(err) on failure, next() on success.
+  // Promise always resolves; err is undefined on success.
+  const err = await new Promise(resolve => upload.single('photo')(req, res, resolve));
 
-    const url = `${PHOTO_BASE}/${encodeURIComponent(guid)}.jpg`;
-    res.status(201).json({ ok: true, url });
-  });
+  if (err?.code === 'INVALID_TYPE')    return res.status(400).json({ error: 'Only JPEG files are accepted' });
+  if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File exceeds 10 MB limit' });
+  if (err) return res.status(500).json({ error: err.message });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded — use field name "photo"' });
+
+  const url = `${PHOTO_BASE}/${encodeURIComponent(guid)}.jpg`;
+  res.status(201).json({ ok: true, url });
 }
 
 // ── POST /api/photo/:guid  (canonical) ───────────────────────────────────
