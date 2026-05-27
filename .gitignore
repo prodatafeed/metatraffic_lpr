@@ -1,0 +1,34 @@
+# ── Environment / secrets ────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Dependencies ─────────────────────────────────────────────────────────
+node_modules/
+
+# ── Uploaded photos (server-local storage, not in version control) ───────
+photos/*.jpg
+photos/*.jpeg
+photos/*.png
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS / editor files ────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Sample / test data (not for production) ──────────────────────────────
+sample-bolo.csv
+seed.js
+
+# ── Claude Code internal files ───────────────────────────────────────────
+.claude/

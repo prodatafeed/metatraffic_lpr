@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOLO Management — MetaTraffic</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="app-page">
+  <header class="top-nav" id="app-header"><!-- nav.js --></header>
+
+  <div class="page-subheader">
+    <span class="page-title">BOLO Management</span>
+    <button class="btn-sm" onclick="document.getElementById('upload-panel').classList.toggle('hidden')">+ Upload CSV</button>
+  </div>
+
+  <main style="padding:0 24px 40px">
+    <div class="alert" id="alert" style="margin-bottom:16px;margin-top:16px"></div>
+
+    <!-- Upload panel -->
+    <div id="upload-panel" class="settings-card hidden" style="margin-bottom:20px;margin-top:16px">
+      <div class="settings-card-title">Upload BOLO CSV</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        CSV format: <code>state,plate,make,model,color</code> — each field is optional; at least one is required per row.
+        A header row starting with <code>state,</code> is automatically skipped.
+      </p>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <input type="file" id="csv-file" accept=".csv,text/csv" style="font-size:13px">
+        <button class="btn-primary" onclick="uploadCSV()">Upload</button>
+        <span id="upload-status" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-row" style="margin-top:16px">
+      <button class="tab-btn active" id="tab-active"   onclick="switchTab('active')">Active Entries</button>
+      <button class="tab-btn"        id="tab-audit"    onclick="switchTab('audit')">Audit Log</button>
+    </div>
+
+    <!-- Active entries tab -->
+    <div id="panel-active">
+      <div class="pagination-bar" id="bolo-pagination-top"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Plate</th>
+              <th>Make</th>
+              <th>Model</th>
+              <th>Color</th>
+              <th>Batch</th>
+              <th>Uploaded By</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bolo-body">
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="bolo-pagination-bottom"></div>
+    </div>
+
+    <!-- Audit log tab -->
+    <div id="panel-audit" style="display:none">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px;margin-bottom:4px">
+        <button class="btn-sm" onclick="loadAudit()">Refresh</button>
+      </div>
+      <div class="pagination-bar" id="audit-pagination-top"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Location</th>
+              <th>Plate</th>
+              <th>State</th>
+              <th>Make</th>
+              <th>Model</th>
+              <th>Color</th>
+              <th>Match</th>
+              <th>Notified</th>
+              <th>Channel</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="audit-body">
+            <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted)">Select the Audit Log tab to load</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="audit-pagination-bottom"></div>
+    </div>
+  </main>
+
+  <!-- Delete batch confirm modal -->
+  <div id="del-backdrop" class="modal-backdrop hidden">
+    <div class="modal" style="padding:28px;max-width:380px">
+      <h3 style="font-size:15px;margin-bottom:10px">Delete BOLO Batch</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+        Delete all <strong id="del-count"></strong> entries in this batch?
+        This cannot be undone.
+      </p>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" style="flex:1;background:var(--danger)" onclick="confirmDeleteBatch()">Delete</button>
+        <button class="btn-secondary" style="flex:1" onclick="document.getElementById('del-backdrop').classList.add('hidden')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/nav.js"></script>
+  <script src="/bolo.js"></script>
+</body>
+</html>

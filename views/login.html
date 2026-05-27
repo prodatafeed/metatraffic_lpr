@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — MetaTraffic LPR</title>
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">MetaTraffic LPR</div>
+    <div class="auth-title">Sign in</div>
+    <div class="auth-sub">Enter your credentials to continue</div>
+
+    <div class="alert" id="alert"></div>
+
+    <form id="login-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" autocomplete="email" required autofocus>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-primary" id="btn-submit">Sign in</button>
+    </form>
+
+    <div class="auth-link">
+      <a href="/forgot-password">Forgot password?</a>
+    </div>
+  </div>
+
+  <script>
+    const form    = document.getElementById('login-form');
+    const alertEl = document.getElementById('alert');
+    const btn     = document.getElementById('btn-submit');
+
+    const reason = new URLSearchParams(location.search).get('reason');
+    if (reason === 'timeout') showAlert('Your session expired due to inactivity. Please sign in again.');
+    if (reason === 'auth')    showAlert('Please sign in to continue.');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      alertEl.className = 'alert';
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+
+      try {
+        const res  = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email:    document.getElementById('email').value,
+            password: document.getElementById('password').value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showAlert(data.error || 'Login failed'); return; }
+        location.href = data.redirect;
+      } catch {
+        showAlert('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign in';
+      }
+    });
+
+    function showAlert(msg) {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert error';
+    }
+  </script>
+</body>
+</html>

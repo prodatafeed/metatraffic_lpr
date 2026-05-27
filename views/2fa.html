@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Two-Factor Authentication — MetaTraffic LPR</title>
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">MetaTraffic LPR</div>
+    <div class="auth-title">Two-Factor Authentication</div>
+    <div class="auth-sub" id="sub-text">Enter the 6-digit code to continue.</div>
+    <div id="method-badge" style="display:none;margin-bottom:16px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--muted);text-align:center"></div>
+
+    <div class="alert" id="alert"></div>
+
+    <div class="code-inputs" id="code-inputs">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+    </div>
+
+    <button class="btn-primary" id="btn-verify" disabled>Verify</button>
+    <a href="/login" class="btn-secondary" style="display:block;text-align:center;padding:9px;text-decoration:none;color:var(--muted);border:1px solid var(--border);border-radius:4px;margin-top:8px;font-size:13px;">Back to login</a>
+  </div>
+
+  <script>
+    const inputs  = Array.from(document.querySelectorAll('.code-inputs input'));
+    const btn     = document.getElementById('btn-verify');
+    const alertEl = document.getElementById('alert');
+    const subText  = document.getElementById('sub-text');
+    const badge    = document.getElementById('method-badge');
+
+    // Load pending auth method and update UI
+    fetch('/api/auth/pending')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        if (data.method === 'totp') {
+          subText.textContent = 'Enter the 6-digit code from your Google Authenticator app.';
+          badge.textContent = '🔐 Google Authenticator';
+          badge.style.display = '';
+        } else if (data.method === 'sms') {
+          subText.textContent = 'Enter the 6-digit code sent to your phone.';
+          badge.innerHTML = '💬 SMS code sent to <strong>' + (data.phoneMask || 'your phone') + '</strong>';
+          badge.style.display = '';
+        }
+      })
+      .catch(() => {});
+
+    // Auto-advance on digit entry
+    inputs.forEach((inp, i) => {
+      inp.addEventListener('input', () => {
+        inp.value = inp.value.replace(/\D/g, '').slice(-1);
+        if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
+        btn.disabled = inputs.some(el => !el.value);
+      });
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i - 1].focus();
+      });
+      inp.addEventListener('paste', e => {
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        if (text.length === 6) {
+          e.preventDefault();
+          inputs.forEach((el, idx) => { el.value = text[idx] || ''; });
+          btn.disabled = false;
+          inputs[5].focus();
+        }
+      });
+    });
+
+    inputs[0].focus();
+
+    btn.addEventListener('click', submit);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter' && !btn.disabled) submit(); });
+
+    async function submit() {
+      const code = inputs.map(el => el.value).join('');
+      alertEl.className = 'alert';
+      btn.disabled = true;
+      btn.textContent = 'Verifying…';
+
+      try {
+        const res  = await fetch('/api/auth/2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alertEl.textContent = data.error || 'Invalid code';
+          alertEl.className = 'alert error';
+          inputs.forEach(el => el.value = '');
+          inputs[0].focus();
+          btn.disabled = true;
+          return;
+        }
+        location.href = data.redirect;
+      } catch {
+        alertEl.textContent = 'Network error. Please try again.';
+        alertEl.className = 'alert error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Verify';
+      }
+    }
+  </script>
+</body>
+</html>

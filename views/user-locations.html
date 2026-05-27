@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Locations — MetaTraffic</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="app-page">
+  <header class="top-nav" id="app-header"><!-- nav.js --></header>
+
+  <div class="page-subheader">
+    <div style="display:flex;align-items:center;gap:12px">
+      <a href="/users" class="btn-sm" style="text-decoration:none">&larr; Back</a>
+      <span class="page-title">Manage Locations</span>
+    </div>
+  </div>
+
+  <main style="padding:0 24px">
+
+    <!-- User info card -->
+    <div id="user-card" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:20px;display:none">
+      <div style="font-size:14px;font-weight:600;color:var(--text)" id="card-name"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px" id="card-email"></div>
+      <div style="margin-top:4px"><span class="role-badge" id="card-role"></span></div>
+    </div>
+
+    <div class="alert" id="alert" style="margin-bottom:16px"></div>
+
+    <!-- Add location -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Add Location</div>
+      <div style="position:relative">
+        <input type="text" id="loc-search" placeholder="Search by code, address, or city…"
+          style="width:100%;box-sizing:border-box" autocomplete="off"
+          oninput="onSearchInput()" onfocus="onSearchInput()">
+        <div id="suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;
+          background:var(--surface);border:1px solid var(--border);border-radius:0 0 6px 6px;
+          box-shadow:0 4px 12px rgba(0,0,0,.08);max-height:240px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- Mapped locations -->
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">Assigned Locations</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Address</th>
+            <th>City</th>
+            <th>State</th>
+            <th>ZIP</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody id="mapped-body">
+          <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="/nav.js"></script>
+  <script src="/user-locations.js"></script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users — MetaTraffic</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="app-page">
+  <header class="top-nav" id="app-header"><!-- nav.js --></header>
+
+  <div class="page-subheader">
+    <span class="page-title">Manage Users</span>
+    <button class="btn-sm" onclick="openCreateModal()">+ New User</button>
+  </div>
+
+  <main>
+    <div class="alert" id="alert" style="margin:0 24px 16px"></div>
+
+    <div class="table-wrap" style="margin:0 24px">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>2FA</th>
+            <th>Created</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-body">
+          <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Create / Edit Modal -->
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div class="modal" style="padding:28px 28px 24px">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h3 id="modal-title" style="font-size:15px;margin-bottom:12px">New User</h3>
+      <div class="alert" id="modal-alert" style="margin-bottom:14px"></div>
+      <input type="hidden" id="modal-user-id">
+
+      <div class="field">
+        <label>First Name</label>
+        <input type="text" id="modal-first-name">
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input type="text" id="modal-last-name">
+      </div>
+      <div class="field" id="email-field">
+        <label>Email</label>
+        <input type="email" id="modal-email">
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select id="modal-role" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:13px;padding:9px 12px">
+          <option value="basic">Basic</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Mobile Phone</label>
+        <input type="tel" id="modal-phone" placeholder="+12125551234">
+      </div>
+      <div class="field" id="password-field">
+        <label>Password <span style="color:var(--muted);font-size:10px">(leave blank to auto-generate)</span></label>
+        <input type="password" id="modal-password" autocomplete="new-password">
+      </div>
+      <div id="reset-2fa-field" style="display:none;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
+          <input type="checkbox" id="modal-reset-2fa" style="cursor:pointer;accent-color:var(--accent)">
+          Reset 2FA — user will reconfigure on next login
+        </label>
+      </div>
+
+      <!-- Notification settings -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">BOLO Notifications</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text);margin-bottom:8px">
+          <input type="checkbox" id="modal-notify-enabled" style="cursor:pointer;accent-color:var(--accent)">
+          Enable BOLO match notifications
+        </label>
+        <div id="modal-notify-channels" style="display:none;padding-left:24px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);margin-bottom:6px">
+            <input type="checkbox" id="modal-notify-sms" style="cursor:pointer;accent-color:var(--accent)">
+            SMS
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
+            <input type="checkbox" id="modal-notify-email" style="cursor:pointer;accent-color:var(--accent)">
+            Email
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-primary" style="flex:1" onclick="saveUser()">Save</button>
+        <button class="btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirm modal -->
+  <div id="del-backdrop" class="modal-backdrop hidden">
+    <div class="modal" style="padding:28px;max-width:360px">
+      <h3 style="font-size:15px;margin-bottom:10px">Delete User</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Are you sure you want to delete <strong id="del-name"></strong>? This cannot be undone.</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" style="flex:1;background:var(--danger)" onclick="confirmDelete()">Delete</button>
+        <button class="btn-secondary" style="flex:1" onclick="document.getElementById('del-backdrop').classList.add('hidden')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/nav.js"></script>
+  <script src="/users.js"></script>
+</body>
+</html>

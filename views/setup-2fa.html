@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Two-Factor Authentication — MetaTraffic LPR</title>
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="auth-page">
+  <div class="auth-card" style="max-width:480px">
+    <div class="auth-brand">MetaTraffic LPR</div>
+    <div class="auth-title">Secure Your Account</div>
+    <div class="auth-sub">Two-factor authentication is required. Choose a method to continue.</div>
+
+    <div class="alert" id="alert"></div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-totp" onclick="switchTab('totp')">Google Authenticator</button>
+      <button class="tab-btn" id="tab-sms" onclick="switchTab('sms')">SMS</button>
+    </div>
+
+    <!-- TOTP panel -->
+    <div class="tab-panel active" id="panel-totp">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Scan the QR code with Google Authenticator, then enter the 6-digit code below.</p>
+      <div class="qr-wrap" id="qr-wrap"><div style="height:180px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;">Loading…</div></div>
+      <div class="secret-key" id="secret-key" style="display:none"></div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:14px;text-align:center;">Can't scan? Enter the key manually in your app.</p>
+      <div class="field">
+        <label>Authenticator Code</label>
+        <input type="text" id="totp-code" maxlength="6" inputmode="numeric" placeholder="000000" autocomplete="one-time-code">
+      </div>
+      <button class="btn-primary" id="btn-totp-verify" onclick="verifyTotp()">Verify &amp; Enable</button>
+    </div>
+
+    <!-- SMS panel -->
+    <div class="tab-panel" id="panel-sms">
+      <div id="sms-step-phone">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Enter your phone number in international format (e.g. +12125551234). A 6-digit code will be sent via SMS.</p>
+        <div class="field">
+          <label>Phone Number</label>
+          <input type="tel" id="sms-phone" placeholder="+12125551234">
+        </div>
+        <button class="btn-primary" onclick="sendSMS()">Send Code</button>
+      </div>
+      <div id="sms-step-code" style="display:none">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Enter the 6-digit code sent to your phone.</p>
+        <div class="code-inputs" id="sms-code-inputs">
+          <input type="text" maxlength="1" inputmode="numeric">
+          <input type="text" maxlength="1" inputmode="numeric">
+          <input type="text" maxlength="1" inputmode="numeric">
+          <input type="text" maxlength="1" inputmode="numeric">
+          <input type="text" maxlength="1" inputmode="numeric">
+          <input type="text" maxlength="1" inputmode="numeric">
+        </div>
+        <button class="btn-primary" id="btn-sms-verify" onclick="verifySMS()">Verify &amp; Enable</button>
+        <button class="btn-secondary" onclick="document.getElementById('sms-step-phone').style.display='';document.getElementById('sms-step-code').style.display='none'">Change number</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const alertEl = document.getElementById('alert');
+    let currentTab = 'totp';
+    let totpLoaded = false;
+
+    function showAlert(msg, type='error') {
+      alertEl.textContent = msg;
+      alertEl.className = `alert ${type}`;
+    }
+    function clearAlert() { alertEl.className = 'alert'; }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      ['totp','sms'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+        document.getElementById(`panel-${t}`).classList.toggle('active', t === tab);
+      });
+      clearAlert();
+      if (tab === 'totp' && !totpLoaded) loadTotpQR();
+    }
+
+    async function loadTotpQR() {
+      try {
+        const res  = await fetch('/api/auth/setup-totp/init', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.error);
+        document.getElementById('qr-wrap').innerHTML = `<img src="${data.qr}" alt="QR Code">`;
+        const keyEl = document.getElementById('secret-key');
+        keyEl.textContent = data.secret;
+        keyEl.style.display = '';
+        totpLoaded = true;
+      } catch { showAlert('Failed to load QR code'); }
+    }
+
+    async function verifyTotp() {
+      const code = document.getElementById('totp-code').value.trim();
+      if (code.length !== 6) return showAlert('Enter all 6 digits');
+      clearAlert();
+      const btn = document.getElementById('btn-totp-verify');
+      btn.disabled = true; btn.textContent = 'Verifying…';
+      try {
+        const res  = await fetch('/api/auth/setup-totp/verify', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.error);
+        showAlert('Two-factor authentication enabled!', 'success');
+        setTimeout(() => location.href = data.redirect || '/lpr', 1200);
+      } catch { showAlert('Network error'); }
+      finally { btn.disabled = false; btn.textContent = 'Verify & Enable'; }
+    }
+
+    async function sendSMS() {
+      const phone = document.getElementById('sms-phone').value.trim();
+      if (!phone) return showAlert('Enter a phone number');
+      clearAlert();
+      try {
+        const res  = await fetch('/api/auth/setup-sms/init', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.error);
+        document.getElementById('sms-step-phone').style.display = 'none';
+        document.getElementById('sms-step-code').style.display  = '';
+        setupSMSCodeInputs();
+        showAlert('Code sent! Check your phone.', 'success');
+      } catch { showAlert('Network error'); }
+    }
+
+    function setupSMSCodeInputs() {
+      const inputs = Array.from(document.querySelectorAll('#sms-code-inputs input'));
+      inputs.forEach((inp, i) => {
+        inp.value = '';
+        inp.addEventListener('input', () => {
+          inp.value = inp.value.replace(/\D/g,'').slice(-1);
+          if (inp.value && i < inputs.length-1) inputs[i+1].focus();
+        });
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i-1].focus();
+        });
+      });
+      inputs[0].focus();
+    }
+
+    async function verifySMS() {
+      const inputs = Array.from(document.querySelectorAll('#sms-code-inputs input'));
+      const code = inputs.map(el => el.value).join('');
+      if (code.length !== 6) return showAlert('Enter all 6 digits');
+      clearAlert();
+      const btn = document.getElementById('btn-sms-verify');
+      btn.disabled = true; btn.textContent = 'Verifying…';
+      try {
+        const res  = await fetch('/api/auth/setup-sms/verify', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.error);
+        showAlert('Two-factor authentication enabled!', 'success');
+        setTimeout(() => location.href = data.redirect || '/lpr', 1200);
+      } catch { showAlert('Network error'); }
+      finally { btn.disabled = false; btn.textContent = 'Verify & Enable'; }
+    }
+
+    // Auto-load TOTP QR on page load
+    loadTotpQR();
+  </script>
+</body>
+</html>

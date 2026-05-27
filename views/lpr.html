@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Realtime LPR — MetaTraffic</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top-nav" id="app-header"><!-- nav.js --></header>
+
+  <div class="page-subheader">
+    <span class="page-title">Realtime LPR</span>
+    <div class="status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-label">Connecting…</span>
+    </div>
+  </div>
+
+  <main>
+    <section class="search-bar">
+      <div class="search-group">
+        <label>Plate</label>
+        <input type="text" id="q-plate" placeholder="ABC123" maxlength="10">
+      </div>
+      <div class="search-group">
+        <label>State</label>
+        <input type="text" id="q-state" placeholder="CA" maxlength="3">
+      </div>
+      <div class="search-group">
+        <label>Make</label>
+        <input type="text" id="q-make" placeholder="Toyota">
+      </div>
+      <div class="search-group">
+        <label>Model</label>
+        <input type="text" id="q-model" placeholder="Camry">
+      </div>
+      <div class="search-group">
+        <label>Color</label>
+        <input type="text" id="q-color" placeholder="Blue">
+      </div>
+      <div class="search-group">
+        <label>Location</label>
+        <div class="loc-dd" id="loc-dd">
+          <button type="button" class="loc-dd-btn" id="loc-dd-btn">All locations ▾</button>
+          <div class="loc-dd-menu hidden" id="loc-dd-menu">
+            <div class="loc-dd-head">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:600;color:var(--muted)">FILTER BY LOCATION</span>
+                <button type="button" id="loc-dd-close" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted);padding:0 2px;line-height:1">&times;</button>
+              </div>
+              <input type="text" id="loc-dd-search" placeholder="Search codes…" autocomplete="off">
+              <div class="loc-dd-actions">
+                <button type="button" id="loc-select-all">All</button>
+                <button type="button" id="loc-clear-all">None</button>
+              </div>
+            </div>
+            <div class="loc-dd-list" id="loc-dd-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="search-group">
+        <label>From</label>
+        <input type="text" id="q-date-from" class="date-input" readonly="readonly">
+      </div>
+      <div class="search-group">
+        <label>To</label>
+        <input type="text" id="q-date-to" class="date-input" readonly="readonly">
+      </div>
+      <button id="btn-search">Search</button>
+      <button id="btn-clear" class="secondary">Clear</button>
+    </section>
+
+    <div class="meta-row">
+      <span id="read-count">0 reads</span>
+      <span id="search-mode" class="badge hidden">Filtered</span>
+      <label class="pause-label">
+        <input type="checkbox" id="chk-pause"> Pause live feed
+      </label>
+    </div>
+
+    <div class="pagination-bar" id="pagination-top"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="timestamp" class="sortable sort-active sort-desc">Time</th>
+            <th data-sort="license_plate" class="sortable">Plate</th>
+            <th data-sort="license_plate_state" class="sortable">State</th>
+            <th data-sort="make" class="sortable">Make</th>
+            <th data-sort="model" class="sortable">Model</th>
+            <th data-sort="color" class="sortable">Color</th>
+            <th data-sort="location" class="sortable">Location</th>
+          </tr>
+        </thead>
+        <tbody id="reads-body"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar" id="pagination-bottom"></div>
+  </main>
+
+  <!-- Detail modal -->
+  <div id="modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      <div class="modal-photo-wrap">
+        <div class="modal-photo-spinner" id="modal-spinner"></div>
+        <img id="modal-photo" class="modal-photo" alt="Captured vehicle" style="display:none">
+        <div class="modal-photo-error hidden" id="modal-photo-error">Photo unavailable</div>
+      </div>
+      <div class="modal-fields" id="modal-fields"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/nav.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

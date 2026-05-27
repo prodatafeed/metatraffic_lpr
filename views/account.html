@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Settings — MetaTraffic</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="app-page">
+  <header class="top-nav" id="app-header"><!-- nav.js --></header>
+
+  <div class="page-subheader">
+    <span class="page-title">Account Settings</span>
+  </div>
+
+  <main style="max-width:600px;margin:0 auto;padding:24px">
+    <div class="alert" id="alert" style="margin-bottom:16px"></div>
+
+    <!-- Profile -->
+    <div class="settings-card">
+      <div class="settings-card-title">Profile</div>
+      <div class="field">
+        <label>First Name</label>
+        <input type="text" id="first-name">
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input type="text" id="last-name">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" disabled style="opacity:.5">
+      </div>
+      <div class="field">
+        <label>Mobile Phone <span style="color:var(--muted);font-size:10px">(optional — E.164 format, e.g. +12125551234)</span></label>
+        <input type="tel" id="phone" placeholder="+12125551234">
+      </div>
+      <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
+    </div>
+
+    <!-- Password -->
+    <div class="settings-card" style="margin-top:20px">
+      <div class="settings-card-title">Change Password</div>
+      <div class="field">
+        <label>Current Password</label>
+        <input type="password" id="pw-current" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label>New Password</label>
+        <input type="password" id="pw-new" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Confirm New Password</label>
+        <input type="password" id="pw-confirm" autocomplete="new-password">
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Min 8 characters — uppercase, lowercase, and number required.</p>
+      <button class="btn-primary" onclick="changePassword()">Change Password</button>
+    </div>
+
+    <!-- Notifications -->
+    <div class="settings-card" style="margin-top:20px">
+      <div class="settings-card-title">BOLO Notifications</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Receive alerts when an incoming LPR read matches a BOLO entry.</p>
+      <div class="field" style="flex-direction:row;align-items:center;gap:10px">
+        <input type="checkbox" id="notify-enabled" style="width:16px;height:16px;margin:0">
+        <label for="notify-enabled" style="margin:0;cursor:pointer">Enable BOLO match notifications</label>
+      </div>
+      <div id="notify-channels" style="margin-top:14px;padding-left:26px;display:none">
+        <div class="field" style="flex-direction:row;align-items:center;gap:10px;margin-bottom:8px">
+          <input type="checkbox" id="notify-sms" style="width:16px;height:16px;margin:0">
+          <label for="notify-sms" style="margin:0;cursor:pointer">SMS (requires phone number above)</label>
+        </div>
+        <div class="field" style="flex-direction:row;align-items:center;gap:10px">
+          <input type="checkbox" id="notify-email" style="width:16px;height:16px;margin:0">
+          <label for="notify-email" style="margin:0;cursor:pointer">Email</label>
+        </div>
+      </div>
+      <button class="btn-primary" style="margin-top:16px" onclick="saveNotifications()">Save Notifications</button>
+    </div>
+
+    <!-- 2FA -->
+    <div class="settings-card" style="margin-top:20px">
+      <div class="settings-card-title">Two-Factor Authentication</div>
+      <div id="tfa-current" style="font-size:12px;color:var(--muted);margin-bottom:16px">Loading…</div>
+      <button class="btn-secondary" onclick="showChangeFA()" id="btn-change-2fa">Change 2FA Method</button>
+
+      <div id="change-2fa-panel" style="display:none;margin-top:20px;border-top:1px solid var(--border);padding-top:20px">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Set up a new 2FA method. Your current method will be replaced after verification.</p>
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="switch2faTab('totp')">Google Authenticator</button>
+          <button class="tab-btn" onclick="switch2faTab('sms')">SMS</button>
+        </div>
+        <div id="fa-panel-totp" class="tab-panel active">
+          <div class="qr-wrap" id="fa-qr-wrap"><div style="height:140px;display:flex;align-items:center;justify-content:center;color:var(--muted)">Loading…</div></div>
+          <div class="secret-key" id="fa-secret-key"></div>
+          <div class="field" style="margin-top:14px">
+            <label>Authenticator Code</label>
+            <input type="text" id="fa-totp-code" maxlength="6" inputmode="numeric" placeholder="000000">
+          </div>
+          <button class="btn-primary" onclick="verifyTotpChange()">Verify &amp; Switch</button>
+        </div>
+        <div id="fa-panel-sms" class="tab-panel">
+          <div id="fa-sms-phone-step">
+            <div class="field">
+              <label>Phone Number</label>
+              <input type="tel" id="fa-sms-phone" placeholder="+12125551234">
+            </div>
+            <button class="btn-primary" onclick="sendFASMS()">Send Code</button>
+          </div>
+          <div id="fa-sms-code-step" style="display:none">
+            <div class="code-inputs" id="fa-sms-code-inputs">
+              <input type="text" maxlength="1" inputmode="numeric">
+              <input type="text" maxlength="1" inputmode="numeric">
+              <input type="text" maxlength="1" inputmode="numeric">
+              <input type="text" maxlength="1" inputmode="numeric">
+              <input type="text" maxlength="1" inputmode="numeric">
+              <input type="text" maxlength="1" inputmode="numeric">
+            </div>
+            <button class="btn-primary" onclick="verifySMSChange()">Verify &amp; Switch</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/nav.js"></script>
+  <script src="/account.js"></script>
+</body>
+</html>
