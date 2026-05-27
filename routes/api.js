@@ -155,7 +155,9 @@ async function handlePhotoUpload(req, res) {
   const ct = (req.headers['content-type'] || '').toLowerCase();
   console.log(`[photo] guid=${guid} content-type="${ct}" user-agent="${req.headers['user-agent']}"`);
 
-  if (ct.includes('multipart/')) {
+  // Only use multer when Content-Type is multipart AND has a boundary.
+  // Devices that send "multipart/form-data" without a boundary go to raw binary.
+  if (ct.includes('multipart/') && ct.includes('boundary=')) {
     // ── multipart/form-data path (multer) ───────────────────────────────
     const err = await new Promise(resolve => upload.single('photo')(req, res, resolve));
     if (err?.code === 'INVALID_TYPE')    return res.status(400).json({ error: 'Only JPEG files are accepted' });
