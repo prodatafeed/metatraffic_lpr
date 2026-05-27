@@ -173,8 +173,12 @@ CREATE TABLE IF NOT EXISTS authentication_audit_log (
   email       VARCHAR(255) DEFAULT NULL,
   event_type  VARCHAR(64) NOT NULL,
   ip_address  VARCHAR(45) DEFAULT NULL,
-  user_agent  VARCHAR(512) DEFAULT NULL,
-  created_at  INT NOT NULL
+  user_agent  TEXT DEFAULT NULL,
+  details     TEXT DEFAULT NULL,
+  created_at  INT NOT NULL,
+  INDEX idx_user_id (user_id),
+  INDEX idx_event_type (event_type),
+  INDEX idx_created_at (created_at)
 );
 ```
 

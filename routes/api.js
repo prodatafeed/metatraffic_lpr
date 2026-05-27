@@ -1,5 +1,6 @@
 const express  = require('express');
 const path     = require('path');
+const fs       = require('fs');
 const multer   = require('multer');
 const pool     = require('../lib/db');
 const { checkAndNotify } = require('../lib/notify');
@@ -144,20 +145,59 @@ router.get('/reads', requireAuth, async (req, res) => {
 });
 
 // ── Photo upload handler (shared by both routes below) ───────────────────
-// multer v2: storage/fileFilter use return-value style, but the middleware
-// is still (req, res, next) — wrap in a Promise using resolve as next.
+// Accepts two content types:
+//   1. multipart/form-data  — field name: photo  (standard curl/web form)
+//   2. image/jpeg OR application/octet-stream     (raw binary, common on embedded LPR devices)
 async function handlePhotoUpload(req, res) {
   const { guid } = req.params;
   if (!GUID_RE.test(guid)) return res.status(400).json({ error: 'Invalid GUID format' });
 
-  // Pass resolve as `next` — multer calls next(err) on failure, next() on success.
-  // Promise always resolves; err is undefined on success.
-  const err = await new Promise(resolve => upload.single('photo')(req, res, resolve));
+  const ct = (req.headers['content-type'] || '').toLowerCase();
+  console.log(`[photo] guid=${guid} content-type="${ct}" user-agent="${req.headers['user-agent']}"`);
 
-  if (err?.code === 'INVALID_TYPE')    return res.status(400).json({ error: 'Only JPEG files are accepted' });
-  if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File exceeds 10 MB limit' });
-  if (err) return res.status(500).json({ error: err.message });
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded — use field name "photo"' });
+  if (ct.includes('multipart/')) {
+    // ── multipart/form-data path (multer) ───────────────────────────────
+    const err = await new Promise(resolve => upload.single('photo')(req, res, resolve));
+    if (err?.code === 'INVALID_TYPE')    return res.status(400).json({ error: 'Only JPEG files are accepted' });
+    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File exceeds 10 MB limit' });
+    if (err) {
+      console.error(`[photo] multer error: ${err.message}`);
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded — use field name "photo"' });
+
+  } else {
+    // ── Raw binary body path (embedded devices) ─────────────────────────
+    // Catches: image/jpeg, image/jpg, application/octet-stream, empty, or any
+    // other content-type a device might send along with a raw JPEG body.
+    const MAX = 10 * 1024 * 1024;
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength > MAX) return res.status(413).json({ error: 'File exceeds 10 MB limit' });
+
+    const filePath = path.join(PHOTOS_DIR, `${guid}.jpg`);
+    try {
+      await new Promise((resolve, reject) => {
+        let size = 0;
+        const ws = fs.createWriteStream(filePath);
+        req.on('data', chunk => {
+          size += chunk.length;
+          if (size > MAX) {
+            ws.destroy();
+            reject(Object.assign(new Error('File exceeds 10 MB limit'), { code: 'TOO_LARGE' }));
+          }
+        });
+        req.pipe(ws);
+        ws.on('finish', resolve);
+        ws.on('error', reject);
+        req.on('error', reject);
+      });
+    } catch (e) {
+      if (e.code === 'TOO_LARGE') return res.status(413).json({ error: 'File exceeds 10 MB limit' });
+      console.error(`[photo] write error: ${e.message}`);
+      return res.status(500).json({ error: e.message });
+    }
+
+  }
 
   const url = `${PHOTO_BASE}/${encodeURIComponent(guid)}.jpg`;
   res.status(201).json({ ok: true, url });
