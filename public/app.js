@@ -290,6 +290,23 @@
     else countEl.textContent = `${allReads.filter(matchesFilters).length.toLocaleString()} reads`;
   });
 
+  // S3 upload completed — swap photo URL in readMap and in the open modal/lightbox
+  socket.on('photo_updated', ({ guid, photo_url }) => {
+    const read = readMap.get(guid);
+    if (read) read.photo_url = photo_url;
+
+    if (currentModalGuid === guid) {
+      // Silently swap the img src — no spinner flash needed, image is already showing
+      const updated = new Image();
+      updated.onload = () => {
+        modalPhoto.src = photo_url;
+        // Also update lightbox if it's open on this image
+        if (!lightbox.classList.contains('hidden')) lightboxImg.src = photo_url;
+      };
+      updated.src = photo_url;
+    }
+  });
+
   // ── Initial load ──────────────────────────────────────────────────────
   fetch('/api/reads?limit=500')
     .then(r => r.json())
@@ -451,7 +468,10 @@
   const modalPhotoError = document.getElementById('modal-photo-error');
   const modalFields     = document.getElementById('modal-fields');
 
+  let currentModalGuid = null;
+
   function openModal(read) {
+    currentModalGuid = read.guid;
     modalPhoto.style.display = 'none';
     modalSpinner.style.display = 'block';
     modalPhotoError.classList.add('hidden');
@@ -476,6 +496,7 @@
     backdrop.classList.add('hidden');
     document.body.style.overflow = '';
     modalPhoto.src = '';
+    currentModalGuid = null;
   }
 
   function field(label, value, extra = '') {
@@ -484,7 +505,37 @@
 
   document.getElementById('modal-close').addEventListener('click', closeModal);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ── Lightbox ──────────────────────────────────────────────────────────
+  const lightbox     = document.getElementById('lightbox');
+  const lightboxImg  = document.getElementById('lightbox-img');
+
+  function openLightbox(src) {
+    lightboxImg.src = src;
+    lightbox.classList.remove('hidden');
+    // Don't change body overflow — detail modal already locked it
+  }
+
+  function closeLightbox() {
+    lightbox.classList.add('hidden');
+    lightboxImg.src = '';
+  }
+
+  // Click photo in detail modal → open lightbox
+  modalPhoto.addEventListener('click', () => {
+    if (modalPhoto.src) openLightbox(modalPhoto.src);
+  });
+
+  // Close lightbox: × button, click backdrop (outside image), or Escape
+  document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (!lightbox.classList.contains('hidden')) { closeLightbox(); return; }
+      closeModal();
+    }
+  });
 
   // ── Helpers ───────────────────────────────────────────────────────────
   function esc(str) {

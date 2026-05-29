@@ -4,11 +4,15 @@ const fs       = require('fs');
 const multer   = require('multer');
 const pool     = require('../lib/db');
 const { checkAndNotify } = require('../lib/notify');
+const { uploadPhoto, buildS3Key } = require('../lib/s3');
 const { requireAuth } = require('../middleware/auth');
 const router  = express.Router();
 
 const MAX_READS    = 10000;
-const PHOTO_BASE   = (process.env.PHOTO_BASE_URL || 'http://localhost:3000/photos').replace(/\/$/, '');
+const PHOTO_BASE   = (
+  process.env.PHOTO_BASE_URL ||
+  (process.env.BASE_URL ? process.env.BASE_URL.replace(/\/$/, '') + '/photos' : 'http://localhost:3000/photos')
+).replace(/\/$/, '');
 const PHOTOS_DIR   = path.join(__dirname, '../photos');
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -201,8 +205,46 @@ async function handlePhotoUpload(req, res) {
 
   }
 
-  const url = `${PHOTO_BASE}/${encodeURIComponent(guid)}.jpg`;
-  res.status(201).json({ ok: true, url });
+  // ── Respond immediately with the local URL ──────────────────────────────
+  const localUrl = `${PHOTO_BASE}/${encodeURIComponent(guid)}.jpg`;
+  res.status(201).json({ ok: true, url: localUrl });
+
+  // ── Push to S3 asynchronously (fire-and-forget) ──────────────────────────
+  // Don't block the 201 — S3 upload happens in the background.
+  if (process.env.AWS_S3_BUCKET) {
+    (async () => {
+      try {
+        // Look up the read to get location_code + timestamp for the S3 path
+        const [rows] = await pool.query(
+          `SELECT r.timestamp, r.received_at, l.location_code
+           FROM lpr_reads r
+           LEFT JOIN locations l ON l.id = r.location_id AND l.deleted_at IS NULL
+           WHERE r.guid = ? LIMIT 1`,
+          [guid]
+        );
+        const read      = rows[0];
+        const timestamp = read?.timestamp || read?.received_at || null;
+        const locCode   = read?.location_code || null;
+
+        const s3Key = buildS3Key(guid, locCode, timestamp);
+        const localPath = path.join(PHOTOS_DIR, `${guid}.jpg`);
+        const s3Url = await uploadPhoto(localPath, s3Key);
+
+        // Update photo_url in DB and in-memory read cache
+        await pool.query('UPDATE lpr_reads SET photo_url = ? WHERE guid = ?', [s3Url, guid]);
+        const cached = readsByGuid.get(guid);
+        if (cached) cached.photo_url = s3Url;
+
+        // Notify all connected browsers so they swap the URL immediately
+        if (io) io.emit('photo_updated', { guid, photo_url: s3Url });
+
+        console.log(`[photo] S3 OK  ${s3Key}`);
+      } catch (e) {
+        console.error(`[photo] S3 ERR ${guid}: ${e.message}`);
+        // Local file is still intact — app continues to serve from disk
+      }
+    })();
+  }
 }
 
 // ── POST /api/photo/:guid  (canonical) ───────────────────────────────────
